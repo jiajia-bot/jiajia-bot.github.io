@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>爽爽绘图 ShuanG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ==========================================================================
+           1. 基础视觉系统与重置
+           ========================================================================== */
+        :root {
+            --primary-blue: #005bb5;
+            --bg-light: #ffffff;
+            --bg-footer: #f5f5f7;
+            --text-dark: #1d1d1f;
+            --text-muted: #86868b;
+            --border-color: #1d1d1f;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --transition-fast: all 0.3s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            font-family: var(--font-sans);
+            line-height: 1.5;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        /* 渐变色块示意 */
+        .bg-gradient-1 { background: linear-gradient(135deg, #7DD3FC 0%, #0369A1 100%); }
+        .bg-gradient-2 { background: linear-gradient(135deg, #FDE047 0%, #B45309 100%); }
+        .bg-gradient-3 { background: linear-gradient(135deg, #FCA5A5 0%, #991B1B 100%); }
+        .bg-gradient-4 { background: linear-gradient(135deg, #D8B4FE 0%, #581C87 100%); }
+
+        /* ==========================================================================
+           2. 顶部导航栏
+           ========================================================================== */
+        .site-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 6%;
+            background-color: rgba(255, 255, 255, 0.9);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .auth-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .login-btn, .register-btn {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .register-btn {
+            background-color: var(--primary-blue);
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 2px;
+            transition: var(--transition-fast);
+        }
+
+        .register-btn:hover {
+            background-color: #004488;
+        }
+
+        .brand-logo {
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--primary-blue);
+            letter-spacing: 0.5px;
+        }
+
+        /* ==========================================================================
+           3. 页面主体排版
+           ========================================================================== */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 4% 120px 4%;
+        }
+
+        .section-group {
+            margin-bottom: 100px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 24px;
+        }
+
+        .image-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .image-wrapper a {
+            position: absolute;
+            inset: 0;
+            display: block;
+            z-index: 10;
+        }
+
+        /* ==========================================================================
+           4. 项目案例板块 (修复图片完美对齐)
+           ========================================================================== */
+        .showcase-layout {
+            display: grid;
+            grid-template-columns: 1.6fr 1fr;
+            /* 将文字剥离到第二行，保证第一行只有图片，完美对齐 */
+            row-gap: 12px;
+            column-gap: 20px; 
+        }
+
+        .main-img-box {
+            width: 100%;
+            height: 100%;
+            aspect-ratio: 16 / 10;
+        }
+
+        .showcase-side {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .side-img-top {
+            width: 100%;
+            aspect-ratio: 16 / 7;
+        }
+
+        .side-placeholder {
+            flex: 1; /* 撑满剩余高度，使右边整体等于左边图片高度 */
+            min-height: 0; /* 关键：防止超出 flex 容器 */
+        }
+
+        .project-name {
+            font-size: 13px;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        /* ==========================================================================
+           5. 实用工具板块
+           ========================================================================== */
+        .tools-masonry {
+            display: grid;
+            grid-template-columns: 1fr 1.6fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .tool-col {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .tool-img-vertical {
+            width: 100%;
+            aspect-ratio: 3 / 4;
+        }
+
+        .tool-placeholder-vertical {
+            width: 80%;
+            aspect-ratio: 3 / 4;
+        }
+
+        .tool-img-horizontal {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+        }
+
+        .tool-placeholder-horizontal {
+            width: 100%;
+            aspect-ratio: 16 / 7;
+        }
+
+        .tool-desc {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-dark);
+            margin-top: 12px;
+        }
+
+        .click-hint {
+            color: #333;
+            font-size: 15px;
+            z-index: 20;
+        }
+
+        .click-hint span {
+            display: block;
+            font-size: 12px;
+            color: #eee;
+            margin-top: 8px;
+        }
+
+        /* ==========================================================================
+           6. 关联滚动专属样式
+           ========================================================================== */
+        .scroll-sync-container {
+            overflow: hidden;
+            position: relative;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        .scroll-sync-track {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .scroll-sync-track .image-wrapper {
+            flex-shrink: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* ==========================================================================
+           7. 极简页脚
+           ========================================================================== */
+        .site-footer {
+            background-color: var(--bg-footer);
+            padding: 60px 4%;
+            border-top: 1px solid #d2d2d7;
+        }
+
+        .footer-wrap {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 40px;
+        }
+
+        .footer-col h3 {
+            font-size: 12px;
+            color: var(--text-dark);
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .footer-col ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .footer-col ul li a {
+            font-size: 12px;
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }
+
+        .footer-col ul li a:hover {
+            color: var(--text-dark);
+        }
+
+        @media (max-width: 768px) {
+            .showcase-layout, .tools-masonry {
+                grid-template-columns: 1fr;
+            }
+            .tool-placeholder-vertical {
+                width: 100%;
+            }
+            .footer-wrap {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="auth-group">
+            <a href="#" class="login-btn">登录</a>
+            <a href="#" class="register-btn">注册</a>
+        </div>
+        <a href="#" class="brand-logo">爽爽绘图 ShuanG</a>
+    </header>
+
+    <main class="main-container">
+        <!-- 模块一：项目案例 -->
+        <section class="section-group">
+            <h2 class="section-title">项目案例案例</h2>
+            <div class="showcase-layout">
+                <!-- 【第一行】左侧主图 -->
+                <div class="image-wrapper main-img-box bg-gradient-1">
+                    <a href="#"></a>
+                    <div class="art-image bg-tool-6"><a href="tools/mosaic-generator.html" target="_blank"><img src="images/work-zaolangchi.jpg" style="width: 100%; height: 100%; object-fit: cover;"/></a></div>
+                    /*作品主图 （工作收尾！ 下一站：深圳欢乐谷玛雅水公园度假）*/
+                </div>
+
+                <!-- 【第一行】右侧图片组 (自动与左侧主图等高对齐) -->
+                <div class="showcase-side">
+                    <div class="image-wrapper side-img-top bg-gradient-2">
+                        <a href="#"></a>
+                         <div class="art-image bg-tool-6"><a href="tools/mosaic-generator.html" target="_blank"><img src="images/work-yezishu.jpg" style="width: 100%; height: 100%; object-fit: cover;"/></a></div>
+                    </div>
+                    <!-- 滚动容器 (自动填满右侧剩余高度) -->
+                    <div class="scroll-sync-container side-placeholder">
+                        <div class="scroll-sync-track">
+                            <div class="image-wrapper bg-gradient-3">滚动图片 A1</div>
+                            <div class="image-wrapper bg-gradient-4">滚动图片 A2</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 【第二行】左侧图片的描述文字 -->
+                <div class="project-name">工作收尾！ 下一站：深圳欢乐谷玛雅水公园度假</div>
+                <!-- 【第二行】右侧留空以保持网格结构 -->
+                <div></div>
+            </div>
+        </section>
+
+        <!-- 模块二：实用工具 -->
+        <section class="section-group">
+            <h2 class="section-title">实用工具</h2>
+            <div class="tools-masonry">
+                <div class="tool-col left-col">
+                    <div class="tool-item">
+                        <div class="image-wrapper tool-img-vertical bg-gradient-3">
+                            <a href="#"></a>
+                            <div class="click-hint">图片可点击<span>(代码中要留出链接位置)</span></div>
+                        </div>
+                        <div class="tool-desc">智能网格识别的非对称排版工具</div>
+                    </div>
+                    
+                    <div class="scroll-sync-container tool-placeholder-vertical">
+                        <div class="scroll-sync-track">
+                            <div class="image-wrapper bg-gradient-1">竖版滚动 A</div>
+                            <div class="image-wrapper bg-gradient-2">竖版滚动 B</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-col right-col">
+                    <div class="tool-item">
+                        <div class="image-wrapper tool-img-horizontal bg-gradient-4">
+                            <a href="#"></a>
+                            <div class="click-hint">图片可点击<span>(代码中要留出链接位置)</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="scroll-sync-container tool-placeholder-horizontal">
+                        <div class="scroll-sync-track">
+                            <div class="image-wrapper bg-gradient-2">横版位置 - 图片 1</div>
+                            <div class="image-wrapper bg-gradient-3">横版位置 - 图片 2</div>
+                            <div class="image-wrapper bg-gradient-1">横版位置 - 图片 3</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 极简页脚 -->
+    <footer class="site-footer">
+        <div class="footer-wrap">
+            <div class="footer-col">
+                <h3>选购及了解</h3>
+                <ul>
+                    <li><a href="#">商店</a></li>
+                    <li><a href="#">Mac</a></li>
+                    <li><a href="#">iPad</a></li>
+                    <li><a href="#">iPhone</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h3>账户</h3>
+                <ul>
+                    <li><a href="#">管理你的 Apple 账户</a></li>
+                    <li><a href="#">Apple Store 账户</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h3>Apple Store 商店</h3>
+                <ul>
+                    <li><a href="#">查找零售店</a></li>
+                    <li><a href="#">Genius Bar 天才吧</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h3>商务应用</h3>
+                <ul>
+                    <li><a href="#">Apple 与商务</a></li>
+                </ul>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 联动滚动 JavaScript -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const syncContainers = document.querySelectorAll('.scroll-sync-container');
+
+            function handleScroll() {
+                const windowHeight = window.innerHeight;
+
+                syncContainers.forEach(container => {
+                    const rect = container.getBoundingClientRect();
+                    const track = container.querySelector('.scroll-sync-track');
+                    if (!track) return;
+
+                    let progress = (windowHeight - rect.top) / (windowHeight + rect.height);
+                    progress = Math.max(0, Math.min(1, progress));
+
+                    const maxScroll = track.scrollHeight - container.clientHeight;
+                    const translateY = progress * maxScroll;
+                    
+                    track.style.transform = `translateY(-${translateY}px)`;
+                });
+            }
+
+            let isTicking = false;
+            window.addEventListener('scroll', () => {
+                if (!isTicking) {
+                    window.requestAnimationFrame(() => {
+                        handleScroll();
+                        isTicking = false;
+                    });
+                    isTicking = true;
+                }
+            });
+
+            handleScroll();
+        });
+    </script>
+</body>
+</html>
+<!-- test -->
