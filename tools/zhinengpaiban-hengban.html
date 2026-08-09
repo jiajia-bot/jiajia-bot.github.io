@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>横風·富士山智能网格排版器 | 日式横版极简</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'soft-bg': '#faf9f6',
+                        'card-light': '#ffffff',
+                        'border-light': '#eae6df',
+                        'text-soft': '#2b2a28',
+                        'accent-orange': '#f97316',
+                        'accent-soft': '#ffedd5',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts: 日文友好 + 无衬线体 + 复古等宽 -->
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Inter:opsz,wght@14..32,300;400;600;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', 'Noto Sans JP', system-ui, sans-serif; 
+            background: #f2efe9; 
+            margin: 0;
+            padding: 20px;
+        }
+        /* 横版画布: 1200x800 (电影感横构) */
+        .poster-canvas {
+            width: 1200px;
+            height: 800px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.15);
+            transition: background-color 0.2s ease;
+            border-radius: 0px;
+            background-color: #f4ebe2; /* fallback */
+        }
+        .typewriter-font { font-family: 'Courier Prime', monospace; }
+        .vertical-text {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+        /* 控制面板滚动条 */
+        .control-panel {
+            max-height: 480px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .control-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        .control-panel::-webkit-scrollbar-track {
+            background: #e7e2d9;
+            border-radius: 6px;
+        }
+        .control-panel::-webkit-scrollbar-thumb {
+            background: #c0b7a8;
+            border-radius: 6px;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #f97316 !important;
+            box-shadow: 0 0 0 2px rgba(249,115,22,0.1);
+        }
+        .btn-soft { background: #f5f3ef; border: 1px solid #e2dcd3; color: #3a3732; }
+        .btn-soft:hover { background: #f97316; border-color: #f97316; color: white; }
+        .toast-msg {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: #2b2a28; color: white; padding: 6px 14px; border-radius: 40px;
+            font-size: 12px; z-index: 999; pointer-events: none; opacity: 0;
+            transition: opacity 0.2s; font-family: monospace;
+        }
+        /* 预览容器滚动适配 */
+        .preview-wrapper {
+            display: flex;
+            justify-content: center;
+            overflow-x: auto;
+            padding: 12px 0 20px 0;
+        }
+        /* 底部控制卡片 */
+        .control-card {
+            background: white;
+            border-radius: 1.5rem;
+            border: 1px solid #e7e2d9;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#f2efe9]">
+
+    <div class="toast-msg" id="toastMsg">🍃 操作成功</div>
+
+    <header class="text-center mb-4">
+        <div class="flex items-center justify-center gap-2 text-3xl font-black tracking-tight text-stone-800">
+            <span class="bg-stone-800 text-white px-3 py-1 text-xl rounded-full">🗻</span> 
+            <span>爽爽排版</span>
+            <span class="text-orange-500">· 随便排都好看</span>
+        </div>
+        <p class="text-stone-500 text-sm mt-1 max-w-xl mx-auto">横版智能网格 · 提取参考图结构 · 非对称排版</p>
+    </header>
+
+    <!-- 整体布局：预览区在上，控制区在下 -->
+    <div class="flex flex-col max-w-7xl mx-auto w-full gap-6">
+        
+        <!-- 上部：海报预览区域 -->
+        <div class="preview-wrapper">
+            <div id="poster-root" class="poster-canvas shadow-xl">
+                <div id="dynamic-bg-layer" class="absolute inset-0 w-full h-full" style="background-color: #f4ebe2; z-index: 0;"></div>
+                <div id="grid-helper-layer" class="absolute inset-0 z-30 pointer-events-none"></div>
+                <div id="poster-content" class="absolute inset-0 z-10"></div>
+            </div>
+        </div>
+        <p class="text-stone-400 text-[10px] text-center -mt-2">⚡ 横版智能网格 · 日式非对称填充 | 红蓝线为识别分割 | 支持竖排文字「風」</p>
+
+        <!-- 下部：控制面板 (全部功能整合) -->
+        <div class="control-card p-5 space-y-5">
+            <!-- 为了让面板紧凑，使用grid布局将控件分组 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 control-panel">
+                <!-- ========= 1. 网格识别区 ========= -->
+                <div class="bg-stone-50/80 rounded-xl p-4 border border-stone-200/80 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-stone-700 flex items-center gap-2">📐 1. 上传参考图 · 提取横版网格</h3>
+                        <span id="grid-status-badge" class="bg-stone-100 text-stone-600 text-[10px] px-2 py-0.5 rounded-full font-mono">待上传</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="space-y-2">
+                            <div onclick="document.getElementById('ref-uploader').click()" class="border border-dashed border-stone-300 hover:border-orange-400 rounded-xl p-2 text-center cursor-pointer transition bg-white/80">
+                                <input type="file" id="ref-uploader" accept="image/*" class="hidden">
+                                <span class="text-xl block">🖼️</span>
+                                <span class="text-[10px] font-medium text-stone-500">上传横版参考图</span>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-[10px] text-stone-500 mb-1"><span>敏感度</span><span id="val-sens" class="text-orange-600 font-mono">60%</span></div>
+                                <input type="range" id="slider-sens" min="10" max="90" step="5" value="60" disabled class="w-full h-1.5 bg-stone-200 rounded accent-orange-500">
+                            </div>
+                        </div>
+                        <div class="bg-stone-100 rounded-xl flex items-center justify-center overflow-hidden border border-stone-200 relative h-24">
+                            <canvas id="ref-canvas" class="max-w-full max-h-full object-contain block"></canvas>
+                            <span id="ref-placeholder" class="text-stone-400 text-[9px] absolute">网格线预览</span>
+                        </div>
+                    </div>
+                    <div class="text-[9px] text-stone-400 leading-tight bg-white p-1 rounded">✨ 梯度识别 → 红(横线)蓝(竖线) 自动提取分隔，适应横版尺寸</div>
+                </div>
+
+                <!-- ========= 2. 素材 & 底色 ========= -->
+                <div class="bg-stone-50/80 rounded-xl p-4 border border-stone-200/80 space-y-3">
+                    <h3 class="text-sm font-semibold text-stone-700">🗻 2. 上传素材 & 底色调整</h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="uploadImgBtn" class="bg-white border border-stone-300 text-stone-700 font-medium py-1.5 px-3 rounded-lg text-xs shadow-sm hover:border-orange-400">📸 上传本地图片</button>
+                        <input type="file" id="material-uploader" accept="image/*" multiple hidden>
+                        <span id="material-count" class="text-xs text-stone-500">5张富士山预设</span>
+                        <button id="resetMaterialBtn" class="text-xs bg-stone-100 border border-stone-200 px-2 py-1 rounded-full hover:bg-orange-50 transition">🗻 重置富士预设</button>
+                        <label class="flex items-center gap-1 text-xs text-stone-600 bg-white px-2 py-1 rounded-full border"><input type="checkbox" id="toggle-grayscale" checked class="accent-orange-500 w-3.5 h-3.5"> 灰度质感</label>
+                        <label class="flex items-center gap-1 text-xs text-stone-600 bg-white px-2 py-1 rounded-full border"><input type="checkbox" id="toggle-grid" checked class="accent-orange-500 w-3.5 h-3.5"> 显示辅助线</label>
+                    </div>
+                    <div class="flex items-center gap-2 bg-white p-2 rounded-lg border border-stone-200">
+                        <span class="text-xs font-medium text-stone-600">🎨 画布底色</span>
+                        <input type="color" id="bg-color-picker" value="#f4ebe2" class="w-6 h-6 rounded border border-stone-300 cursor-pointer">
+                        <input type="text" id="bg-hex-input" value="#f4ebe2" placeholder="#HEX" class="flex-1 text-xs border border-stone-200 rounded px-2 py-1 font-mono bg-stone-50">
+                        <button id="apply-bg-btn" class="text-xs bg-stone-100 px-2 py-1 rounded border border-stone-200 hover:bg-orange-50 transition">应用</button>
+                    </div>
+                    <p class="text-[9px] text-stone-400">✔ 预设富士山、樱景、和风素材 | 支持多选替换</p>
+                </div>
+
+                <!-- ========= 3. 文案 & 字号 ========= -->
+                <div class="bg-stone-50/80 rounded-xl p-4 border border-stone-200/80 space-y-3">
+                    <h3 class="text-sm font-semibold text-stone-700">✍️ 3. 分层文本</h3>
+                    <div class="space-y-2">
+                        <div><div class="flex justify-between text-[10px]"><span>主标题</span><span id="title-size-val" class="text-orange-600 font-mono">48px</span></div>
+                        <div class="flex gap-2"><input type="text" id="input-title" value="随风飘散而去的" class="flex-1 bg-white border border-stone-300 rounded-lg p-1.5 text-sm"><input type="range" id="title-font-size" min="24" max="96" step="2" value="48" class="w-24 accent-orange-500"></div></div>
+                        <div><div class="flex justify-between text-[10px]"><span>副标题</span><span id="subtitle-size-val" class="text-orange-600 font-mono">20px</span></div>
+                        <div class="flex gap-2"><input type="text" id="input-subtitle" value="Mount Fuji in Japan · Better life" class="flex-1 bg-white border border-stone-300 rounded-lg p-1.5 text-xs"><input type="range" id="subtitle-font-size" min="12" max="56" step="1" value="20" class="w-24 accent-orange-500"></div></div>
+                        <div><div class="flex justify-between text-[10px]"><span>正文</span><span id="body-size-val" class="text-orange-600 font-mono">13px</span></div>
+                        <textarea id="input-body" rows="1" class="w-full bg-white border border-stone-300 rounded-lg p-1.5 text-xs">この山は、おじいさんがわざわざ雪で積み上げたように、あの真っ白な山頂は、一年中大きな白い帽子をかぶっていて、純潔で神聖に見えます。そして、富士山の形は特に独特で、どの角度から見ても完璧な対称で、まるで芸術品のようにです。</textarea>
+                        <input type="range" id="body-font-size" min="9" max="28" step="1" value="13" class="w-full accent-orange-500"></div>
+                        <div><label class="text-[10px] text-stone-600">輔助標籤 / 竖排文字 (每行一个)</label>
+                        <textarea id="input-aux" rows="1" class="w-full bg-white border border-stone-300 rounded-lg p-1.5 text-xs font-mono">風\nENEOS\n富士山頂\n雪化粧</textarea>
+                        <div class="flex justify-between mt-1"><span class="text-[9px] text-stone-500">标签字号</span><input type="range" id="aux-font-size" min="10" max="32" step="1" value="12" class="w-28 accent-orange-500"></div></div>
+                    </div>
+                </div>
+
+                <!-- ========= 4. 图片缩放 ========= -->
+                <div class="bg-stone-50/80 rounded-xl p-4 border border-stone-200/80 space-y-2">
+                    <div class="flex justify-between items-center"><h3 class="text-sm font-semibold text-stone-700">🖼️ 图片缩放比例</h3><span id="img-scale-val" class="text-orange-600 font-mono text-sm">100%</span></div>
+                    <input type="range" id="image-scale-slider" min="40" max="180" step="5" value="100" class="w-full accent-orange-500">
+                    <p class="text-[9px] text-stone-400">适应横版网格内的图片大小</p>
+                </div>
+
+                <!-- ========= 5. 布局种子 & 导出 ========= -->
+                <div class="bg-stone-50/80 rounded-xl p-4 border border-stone-200/80 space-y-3">
+                    <div><div class="flex justify-between text-xs text-stone-600 mb-1"><span>🎲 非对称布局种子</span><span id="seed-val" class="text-orange-600 font-mono font-bold">318</span></div>
+                    <input type="range" id="slider-seed" min="1" max="999" step="1" value="318" class="w-full h-1.5 bg-stone-200 rounded accent-orange-500"></div>
+                    <div class="flex gap-2">
+                        <button onclick="randomizeSeed()" class="flex-1 bg-white border border-stone-300 hover:border-orange-400 text-stone-700 font-medium py-2 rounded-xl text-xs transition">🎲 随机布局</button>
+                        <button onclick="exportPoster()" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-xl shadow-sm text-sm transition">⬇️ 导出 PNG</button>
+                    </div>
+                    <button onclick="resetToDefault()" class="w-full text-stone-500 border border-stone-200 rounded-xl py-1.5 text-xs hover:bg-stone-100 transition">⟳ 重置所有参数 (富士主题/横版)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ---------- 横版全局常量 (宽1200 高800) ----------
+        const POSTER_W = 1200;
+        const POSTER_H = 800;
+        
+        // ---------- 全局变量 ----------
+        let uploadedMaterials = [];          // 用户上传图片 base64
+        let referenceImg = null;         
+        // 初始横版网格 (预设分割 4列 x 3行 适应横构)
+        let gridXCoords = [0, 300, 600, 900, 1200];
+        let gridYCoords = [0, 266, 533, 800];
+        const accentColors = ["#c9ada1", "#6a8d73", "#b68b6e", "#d1b894", "#8ca3a3", "#e3b091"];
+        
+        // 🗻 富士山/日本风情预设图片 (高质量横版友好)
+        const FUJI_PRESETS = [
+            "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=600&fit=crop&auto=format",   // 富士山
+            "https://images.unsplash.com/photo-1504198453319-5ce911bafcde?w=600&fit=crop&auto=format",   // 鸟居
+            "https://images.unsplash.com/photo-1527678736892-0457f4b9ae33?w=600&fit=crop&auto=format",   // 樱花
+            "https://images.unsplash.com/photo-1507608616759-54f48f0af0ee?w=600&fit=crop&auto=format",   // 日本庭园
+            "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&fit=crop&auto=format"    // 云海富士
+        ];
+        
+        let activeImageSources = [...FUJI_PRESETS];
+        let typoSizes = { title: 48, subtitle: 20, body: 13, aux: 12 };
+        let globalImageScale = 100;
+
+        function showMessage(msg, isError = false) {
+            const toast = document.getElementById('toastMsg');
+            toast.textContent = msg;
+            toast.style.background = isError ? '#c2410c' : '#2b2a28';
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+        }
+
+        function mulberry32(a) {
+            return function() { var t = a += 0x6D2B79F5; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+        }
+
+        function randomizeSeed() {
+            const randomVal = Math.floor(Math.random() * 999) + 1;
+            document.getElementById('slider-seed').value = randomVal;
+            document.getElementById('seed-val').innerText = randomVal;
+            generateLayout();
+            drawGridLines();
+            showMessage(`🎲 新种子: ${randomVal}`);
+        }
+
+        function resetToApplePreset() {
+            uploadedMaterials = [];
+            activeImageSources = [...FUJI_PRESETS];
+            document.getElementById('material-count').innerText = `${activeImageSources.length}张富士山预设`;
+            showMessage(`🗻 已恢复富士山主题预设图片`);
+            generateLayout();
+        }
+
+        function resetToDefault() {
+            document.getElementById('slider-seed').value = '318';
+            document.getElementById('seed-val').innerText = '318';
+            document.getElementById('input-title').value = '随风飘散而去的';
+            document.getElementById('input-subtitle').value = 'Mount Fuji in Japan · Better life';
+            document.getElementById('input-body').value = 'この山は、おじいさんがわざわざ雪で積み上げたように、あの真っ白な山頂は、一年中大きな白い帽子をかぶっていて、純潔で神聖に見えます。そして、富士山の形は特に独特で、どの角度から見ても完璧な対称で、まるで芸術品のようにです。';
+            document.getElementById('input-aux').value = '風\nENEOS\n富士山頂\n雪化粧';
+            document.getElementById('title-font-size').value = '48';
+            document.getElementById('subtitle-font-size').value = '20';
+            document.getElementById('body-font-size').value = '13';
+            document.getElementById('aux-font-size').value = '12';
+            document.getElementById('image-scale-slider').value = '100';
+            document.getElementById('bg-color-picker').value = '#f4ebe2';
+            document.getElementById('bg-hex-input').value = '#f4ebe2';
+            document.getElementById('toggle-grayscale').checked = true;
+            document.getElementById('toggle-grid').checked = true;
+            typoSizes = { title:48, subtitle:20, body:13, aux:12 };
+            globalImageScale = 100;
+            updateSizeLabels();
+            applyBackgroundColor('#f4ebe2');
+            uploadedMaterials = [];
+            activeImageSources = [...FUJI_PRESETS];
+            document.getElementById('material-count').innerText = `${activeImageSources.length}张富士山预设`;
+            gridXCoords = [0, 300, 600, 900, 1200];
+            gridYCoords = [0, 266, 533, 800];
+            generateLayout();
+            drawGridLines();
+            showMessage(`⟳ 重置全部参数 · 横版富士主题`);
+        }
+
+        function updateSizeLabels() {
+            document.getElementById('title-size-val').innerText = typoSizes.title + 'px';
+            document.getElementById('subtitle-size-val').innerText = typoSizes.subtitle + 'px';
+            document.getElementById('body-size-val').innerText = typoSizes.body + 'px';
+            document.getElementById('aux-font-size').value = typoSizes.aux;
+            document.getElementById('img-scale-val').innerText = globalImageScale + '%';
+        }
+
+        function applyBackgroundColor(hexColor) {
+            const bgLayer = document.getElementById('dynamic-bg-layer');
+            if(bgLayer) bgLayer.style.backgroundColor = hexColor;
+        }
+        document.getElementById('apply-bg-btn').addEventListener('click', () => {
+            let hex = document.getElementById('bg-hex-input').value.trim();
+            if(!hex.startsWith('#')) hex = '#' + hex;
+            if(/^#[0-9A-F]{6}$/i.test(hex) || hex.length===7) {
+                document.getElementById('bg-color-picker').value = hex;
+                applyBackgroundColor(hex);
+                generateLayout();
+            } else showMessage("输入有效十六进制色值", true);
+        });
+        document.getElementById('bg-color-picker').addEventListener('input', (e) => {
+            document.getElementById('bg-hex-input').value = e.target.value;
+            applyBackgroundColor(e.target.value);
+        });
+
+        // ---------- 网格识别 (基于横版尺寸 POSTER_W, POSTER_H) ----------
+        const refUploader = document.getElementById('ref-uploader');
+        const refCanvas = document.getElementById('ref-canvas');
+        const refCtx = refCanvas.getContext('2d');
+        const sliderSens = document.getElementById('slider-sens');
+        const valSens = document.getElementById('val-sens');
+
+        refUploader.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        referenceImg = img;
+                        sliderSens.disabled = false;
+                        document.getElementById('ref-placeholder').classList.add('hidden');
+                        document.getElementById('grid-status-badge').innerHTML = "✓ 已提取";
+                        document.getElementById('grid-status-badge').className = "bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-mono";
+                        analyzeAndExtractGrid();
+                        showMessage("横版网格提取完成");
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        sliderSens.addEventListener('input', (e) => { valSens.innerText = `${e.target.value}%`; if(referenceImg) analyzeAndExtractGrid(); });
+
+        function analyzeAndExtractGrid() {
+            if (!referenceImg) return;
+            const w = referenceImg.width, h = referenceImg.height;
+            refCanvas.width = 300;
+            refCanvas.height = Math.round((h / w) * 300);
+            refCtx.drawImage(referenceImg, 0, 0, refCanvas.width, refCanvas.height);
+            const cw = refCanvas.width, ch = refCanvas.height;
+            const imgData = refCtx.getImageData(0, 0, cw, ch);
+            const data = imgData.data;
+            const gradX = new Float32Array(cw * ch);
+            const gradY = new Float32Array(cw * ch);
+            for (let y = 1; y < ch-1; y++) {
+                for (let x = 1; x < cw-1; x++) {
+                    const idx = (y * cw + x) * 4;
+                    const getGray = (i) => (data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114);
+                    const gx = getGray(idx+4) - getGray(idx-4);
+                    const gy = getGray(idx + cw*4) - getGray(idx - cw*4);
+                    gradX[y*cw+x] = Math.abs(gx);
+                    gradY[y*cw+x] = Math.abs(gy);
+                }
+            }
+            const projX = new Float32Array(cw), projY = new Float32Array(ch);
+            for(let x=0; x<cw; x++) { let sum=0; for(let y=0; y<ch; y++) sum += gradX[y*cw+x]; projX[x] = sum/ch; }
+            for(let y=0; y<ch; y++) { let sum=0; for(let x=0; x<cw; x++) sum += gradY[y*cw+x]; projY[y] = sum/cw; }
+            const sensitivity = parseInt(sliderSens.value)/100;
+            function findPeaks(arr, sens) {
+                const peaks = [];
+                const maxVal = Math.max(...arr);
+                const threshold = maxVal * (1 - sens) * 0.4;
+                const windowSize = Math.max(4, Math.floor(arr.length * 0.05));
+                for (let i=windowSize; i<arr.length-windowSize; i++) {
+                    if(arr[i] > threshold) {
+                        let isMax = true;
+                        for(let w=-windowSize; w<=windowSize; w++) if(arr[i+w] > arr[i]) { isMax=false; break; }
+                        if(isMax) { peaks.push(i); i+=windowSize; }
+                    }
+                }
+                return peaks;
+            }
+            let peaksX = findPeaks(projX, sensitivity);
+            let peaksY = findPeaks(projY, sensitivity);
+            const mapX = (p) => (p / cw) * POSTER_W;
+            const mapY = (p) => (p / ch) * POSTER_H;
+            let tempX = peaksX.map(mapX), tempY = peaksY.map(mapY);
+            gridXCoords = [0, ...tempX, POSTER_W].sort((a,b)=>a-b);
+            gridYCoords = [0, ...tempY, POSTER_H].sort((a,b)=>a-b);
+            const filterCoords = (arr, minDist=40) => { let res=[arr[0]]; for(let i=1;i<arr.length;i++) if(arr[i]-res[res.length-1]>minDist || i===arr.length-1) res.push(arr[i]); return res; };
+            gridXCoords = filterCoords(gridXCoords, 50);
+            gridYCoords = filterCoords(gridYCoords, 40);
+            refCtx.drawImage(referenceImg, 0, 0, cw, ch);
+            refCtx.lineWidth = 1.2;
+            peaksX.forEach(px=>{ refCtx.strokeStyle='#3b82f6'; refCtx.beginPath(); refCtx.moveTo(px,0); refCtx.lineTo(px,ch); refCtx.stroke(); });
+            peaksY.forEach(py=>{ refCtx.strokeStyle='#ef4444'; refCtx.beginPath(); refCtx.moveTo(0,py); refCtx.lineTo(cw,py); refCtx.stroke(); });
+            generateLayout();
+            drawGridLines();
+        }
+
+        function handleMaterialUpload(files) {
+            if (!files || files.length === 0) return;
+            const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+            if (validFiles.length === 0) { showMessage("请选择图片文件", true); return; }
+            let loadedCount = 0;
+            const newImages = [];
+            validFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    newImages.push(ev.target.result);
+                    loadedCount++;
+                    if (loadedCount === validFiles.length) {
+                        uploadedMaterials = newImages;
+                        activeImageSources = [...uploadedMaterials];
+                        document.getElementById('material-count').innerText = `${activeImageSources.length}张本地素材`;
+                        generateLayout();
+                        showMessage(`✅ 已载入 ${activeImageSources.length} 张本地图片`);
+                    }
+                };
+                reader.onerror = () => { loadedCount++; };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 核心排版引擎 (横版)
+        function generateLayout() {
+            const seed = parseInt(document.getElementById('slider-seed').value);
+            document.getElementById('seed-val').innerText = seed;
+            const rand = mulberry32(seed);
+            const container = document.getElementById('poster-content');
+            if(!container) return;
+            container.innerHTML = '';
+            
+            const titleText = document.getElementById('input-title').value || "風";
+            const subtitleText = document.getElementById('input-subtitle').value || "";
+            const bodyText = document.getElementById('input-body').value || "";
+            const auxLines = document.getElementById('input-aux').value.split('\n').filter(l=>l.trim()!=="");
+            const applyGrayscale = document.getElementById('toggle-grayscale').checked;
+            const currentImages = activeImageSources.length > 0 ? activeImageSources : FUJI_PRESETS;
+            const cols = gridXCoords.length-1, rows = gridYCoords.length-1;
+            if(cols<=0 || rows<=0) return;
+            
+            let occupied = Array.from({length: rows}, ()=>Array(cols).fill(false));
+            let itemsToPlace = [];
+            const titleW = Math.max(1, Math.min(cols, Math.floor(cols*0.5)));
+            const titleH = Math.max(1, Math.min(rows, Math.floor(rows*0.25)));
+            itemsToPlace.push({ type:'title', w:titleW, h:titleH, text:titleText });
+            const bodyW = Math.max(1, Math.min(cols-1, Math.floor(cols*0.4)));
+            const bodyH = Math.max(1, Math.min(rows-1, Math.floor(rows*0.35)));
+            itemsToPlace.push({ type:'body', w:bodyW, h:bodyH, text:bodyText });
+            const imgCount = Math.min(currentImages.length, Math.floor(rand() * 3) + 2);
+            for(let i=0; i<imgCount; i++) {
+                let src = currentImages[i % currentImages.length];
+                let w=1, h=1, r=rand();
+                if(cols>2 && rows>1){ if(r<0.3){ w=2; h=1; } else if(r<0.6){ w=1; h=2; } else if(r<0.8){ w=2; h=2; } }
+                itemsToPlace.push({ type:'image', w:Math.min(w,cols), h:Math.min(h,rows), src:src });
+            }
+            const numColors = Math.max(2, Math.floor(rand()*3)+1);
+            for(let i=0;i<numColors;i++) itemsToPlace.push({ type:'color_block', w:1, h:1, color:accentColors[Math.floor(rand()*accentColors.length)] });
+            auxLines.forEach(txt=> itemsToPlace.push({ type:'aux_text', w:1, h:1, text:txt, rotate: rand()>0.4 }));
+            for(let i=0;i<3;i++) itemsToPlace.push({ type:'decor', w:1, h:1, style: rand()>0.5?'circle':'line' });
+            
+            itemsToPlace.forEach(item=>{
+                let possible=[];
+                for(let r=0; r<=rows-item.h; r++){
+                    for(let c=0; c<=cols-item.w; c++){
+                        let can=true;
+                        for(let y=0; y<item.h; y++) for(let x=0; x<item.w; x++) if(occupied[r+y][c+x]) { can=false; break; }
+                        if(can) possible.push({r,c});
+                    }
+                }
+                if(possible.length){
+                    const chosen = possible[Math.floor(rand()*possible.length)];
+                    for(let y=0; y<item.h; y++) for(let x=0; x<item.w; x++) occupied[chosen.r+y][chosen.c+x]=true;
+                    const posX = gridXCoords[chosen.c];
+                    const posY = gridYCoords[chosen.r];
+                    const widthVal = gridXCoords[chosen.c+item.w]-posX;
+                    const heightVal = gridYCoords[chosen.r+item.h]-posY;
+                    const el = document.createElement('div');
+                    el.style.position = 'absolute';
+                    el.style.left = `${posX}px`;
+                    el.style.top = `${posY}px`;
+                    el.style.width = `${widthVal}px`;
+                    el.style.height = `${heightVal}px`;
+                    el.style.overflow = 'hidden';
+                    el.style.boxSizing = 'border-box';
+                    
+                    if(item.type === 'title'){
+                        el.className = "flex flex-col justify-end items-start p-3";
+                        el.innerHTML = `<h2 style="font-size:${typoSizes.title}px; line-height:1.1; font-weight:800; letter-spacing:-0.01em; color:#2c2823;">${item.text}</h2><p style="font-size:${typoSizes.subtitle}px; font-weight:500; color:#5c5248;">${subtitleText}</p>`;
+                    } 
+                    else if(item.type === 'body'){
+                        el.className = "flex flex-col justify-start items-start p-3";
+                        el.innerHTML = `<p style="font-size:${typoSizes.body}px; font-weight:450; line-height:1.45; color:#3e3a35; text-align:justify;">${item.text}</p>`;
+                    }
+                    else if(item.type === 'image'){
+                        const scalePercent = globalImageScale / 100;
+                        const scaleStyle = `transform: scale(${scalePercent}); transform-origin: center center; width:100%; height:100%; object-fit:cover;`;
+                        const filterClass = applyGrayscale ? "grayscale contrast-[1.05] brightness-[0.98]" : "";
+                        const img = document.createElement('img');
+                        img.src = item.src;
+                        img.style.cssText = scaleStyle;
+                        img.className = `w-full h-full object-cover ${filterClass}`;
+                        if (item.src.startsWith('http')) img.crossOrigin = "Anonymous";
+                        img.onerror = () => { img.src = FUJI_PRESETS[0]; };
+                        el.appendChild(img);
+                    }
+                    else if(item.type === 'color_block') el.innerHTML = `<div class="w-full h-full" style="background-color:${item.color}; opacity:0.85;"></div>`;
+                    else if(item.type === 'aux_text'){
+                        const rotateClass = item.rotate ? "vertical-text rotate-180" : "";
+                        el.innerHTML = `<span class="typewriter-font ${rotateClass}" style="font-size:${typoSizes.aux}px; font-weight:600; color:#5f5348;">${item.text}</span>`;
+                    }
+                    else if(item.type === 'decor'){
+                        if(item.style === 'circle') el.innerHTML = `<div style="width:${Math.min(widthVal,heightVal)*0.12}px; height:${Math.min(widthVal,heightVal)*0.12}px; border-radius:50%; border:1.5px solid #b9a48b;"></div>`;
+                        else el.innerHTML = `<div style="width:60%; border-bottom:2px solid #d4c3af; margin:auto;"></div>`;
+                    }
+                    container.appendChild(el);
+                }
+            });
+        }
+
+        function drawGridLines(){
+            const gridLayer = document.getElementById('grid-helper-layer');
+            if(!gridLayer) return;
+            gridLayer.innerHTML = '';
+            const showLines = document.getElementById('toggle-grid').checked;
+            if(!showLines) return;
+            for(let i=1; i<gridYCoords.length-1; i++){
+                const line = document.createElement('div');
+                line.style.cssText = `position:absolute; left:0; top:${gridYCoords[i]}px; width:${POSTER_W}px; height:1px; background-color:rgba(59,130,246,0.5); pointer-events:none;`;
+                gridLayer.appendChild(line);
+            }
+            for(let i=1; i<gridXCoords.length-1; i++){
+                const line = document.createElement('div');
+                line.style.cssText = `position:absolute; left:${gridXCoords[i]}px; top:0; width:1px; height:${POSTER_H}px; background-color:rgba(239,68,68,0.5); pointer-events:none;`;
+                gridLayer.appendChild(line);
+            }
+            for(let y=1; y<gridYCoords.length-1; y++){
+                for(let x=1; x<gridXCoords.length-1; x++){
+                    const dot = document.createElement('div');
+                    dot.style.cssText = `position:absolute; left:${gridXCoords[x]-3}px; top:${gridYCoords[y]-3}px; width:5px; height:5px; border-radius:50%; background-color:#22c55e; opacity:0.8; z-index:35;`;
+                    gridLayer.appendChild(dot);
+                }
+            }
+        }
+
+        // 事件绑定
+        document.getElementById('uploadImgBtn').addEventListener('click', () => { document.getElementById('material-uploader').click(); });
+        document.getElementById('material-uploader').addEventListener('change', (e) => { if(e.target.files.length) handleMaterialUpload(e.target.files); e.target.value = ''; });
+        document.getElementById('resetMaterialBtn').addEventListener('click', resetToApplePreset);
+        document.getElementById('title-font-size').addEventListener('input', (e)=>{ typoSizes.title = parseInt(e.target.value); updateSizeLabels(); generateLayout(); });
+        document.getElementById('subtitle-font-size').addEventListener('input', (e)=>{ typoSizes.subtitle = parseInt(e.target.value); updateSizeLabels(); generateLayout(); });
+        document.getElementById('body-font-size').addEventListener('input', (e)=>{ typoSizes.body = parseInt(e.target.value); updateSizeLabels(); generateLayout(); });
+        document.getElementById('aux-font-size').addEventListener('input', (e)=>{ typoSizes.aux = parseInt(e.target.value); updateSizeLabels(); generateLayout(); });
+        document.getElementById('image-scale-slider').addEventListener('input', (e)=>{ globalImageScale = parseInt(e.target.value); document.getElementById('img-scale-val').innerText = globalImageScale+'%'; generateLayout(); });
+        document.getElementById('slider-seed').addEventListener('input', (e)=>{ document.getElementById('seed-val').innerText = e.target.value; generateLayout(); drawGridLines(); });
+        ['input-title','input-subtitle','input-body','input-aux','toggle-grayscale'].forEach(id => document.getElementById(id).addEventListener('input', generateLayout));
+        document.getElementById('toggle-grid').addEventListener('change', drawGridLines);
+        
+        async function exportPoster() {
+            const node = document.getElementById('poster-root');
+            try {
+                const dataUrl = await htmlToImage.toPng(node, { quality:0.98, pixelRatio:2, width:POSTER_W, height:POSTER_H });
+                const link = document.createElement('a');
+                link.download = `fuji-swiss-poster-${Date.now()}.png`;
+                link.href = dataUrl;
+                link.click();
+                showMessage("🗻 横版海报导出成功");
+            } catch(e){ console.warn(e); showMessage("导出可能跨域，建议使用本地图片后导出", true); }
+        }
+        function resizePreview(){ 
+            const root = document.getElementById('poster-root'); 
+            if(root?.parentElement) {
+                const container = root.parentElement;
+                const scale = Math.min(container.clientWidth / POSTER_W, 1);
+                root.style.transform = `scale(${scale})`;
+                root.style.transformOrigin = 'top center';
+            }
+        }
+        window.addEventListener('resize', resizePreview);
+        window.onload = () => { resetToDefault(); setTimeout(resizePreview, 50); };
+    </script>
+</body>
+</html>

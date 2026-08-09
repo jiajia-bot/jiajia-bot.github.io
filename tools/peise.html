@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>HTML 配色工具</title>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: Arial, "Microsoft YaHei", sans-serif;
+    background: #f4f4f4;
+    color: #222;
+  }
+
+  .app {
+    max-width: 1100px;
+    margin: 40px auto;
+    padding: 24px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.08);
+  }
+
+  h1 {
+    margin-top: 0;
+    text-align: center;
+  }
+
+  .main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  .wheel-wrap {
+    text-align: center;
+  }
+
+  .color-wheel {
+    width: 280px;
+    height: 280px;
+    margin: 0 auto;
+    border-radius: 50%;
+    position: relative;
+    cursor: crosshair;
+    background:
+      radial-gradient(circle, #fff 0%, rgba(255,255,255,0) 68%),
+      conic-gradient(
+        red,
+        yellow,
+        lime,
+        cyan,
+        blue,
+        magenta,
+        red
+      );
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.15);
+  }
+
+  .color-wheel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: inset 0 0 20px rgba(0,0,0,.18);
+    pointer-events: none;
+  }
+
+  .picker-point {
+    width: 16px;
+    height: 16px;
+    border: 3px solid white;
+    border-radius: 50%;
+    position: absolute;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 0 1px #000, 0 2px 8px rgba(0,0,0,.35);
+    pointer-events: none;
+  }
+
+  .controls {
+    margin-top: 24px;
+    text-align: left;
+  }
+
+  .control {
+    margin-bottom: 18px;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+  }
+
+  select,
+  input[type="range"] {
+    width: 100%;
+  }
+
+  select {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+  }
+
+  input[type="range"] {
+    accent-color: #333;
+  }
+
+  .base-preview {
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 12px;
+    background: #fafafa;
+    border: 1px solid #eee;
+  }
+
+  .base-color {
+    height: 80px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(0,0,0,.15);
+  }
+
+  .info {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .palette-title {
+    margin: 0 0 18px;
+    font-size: 22px;
+  }
+
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 18px;
+  }
+
+  .swatch {
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    box-shadow: 0 4px 12px rgba(0,0,0,.05);
+  }
+
+  .swatch-color {
+    height: 150px;
+  }
+
+  .swatch-info {
+    padding: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .swatch-info strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .copy-btn {
+    margin-top: 8px;
+    width: 100%;
+    border: none;
+    padding: 8px;
+    border-radius: 8px;
+    background: #222;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .copy-btn:hover {
+    background: #444;
+  }
+
+  @media (max-width: 800px) {
+    .main {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <h1>HTML 配色工具</h1>
+
+  <div class="main">
+    <div class="wheel-wrap">
+      <div id="colorWheel" class="color-wheel">
+        <div id="pickerPoint" class="picker-point"></div>
+      </div>
+
+      <div class="controls">
+        <div class="control">
+          <label for="lightness">明度 Lightness：<span id="lightnessText">50</span>%</label>
+          <input id="lightness" type="range" min="10" max="90" value="50">
+        </div>
+
+        <div class="control">
+          <label for="mode">配色方式</label>
+          <select id="mode">
+            <option value="mono">单色配</option>
+            <option value="same">同色配 ±15°</option>
+            <option value="two">两色配</option>
+            <option value="three">三色配</option>
+            <option value="four">四色配</option>
+          </select>
+        </div>
+
+        <div class="control" id="subModeWrap">
+          <label for="subMode">配色类型</label>
+          <select id="subMode"></select>
+        </div>
+      </div>
+
+      <div class="base-preview">
+        <div id="baseColor" class="base-color"></div>
+        <div class="info">
+          <div>当前色：<strong id="baseHex"></strong></div>
+          <div id="baseHsl"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h2 class="palette-title">生成配色</h2>
+      <div id="palette" class="palette"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const colorWheel = document.getElementById("colorWheel");
+  const pickerPoint = document.getElementById("pickerPoint");
+  const lightnessInput = document.getElementById("lightness");
+  const lightnessText = document.getElementById("lightnessText");
+  const modeSelect = document.getElementById("mode");
+  const subModeSelect = document.getElementById("subMode");
+  const subModeWrap = document.getElementById("subModeWrap");
+  const palette = document.getElementById("palette");
+  const baseColorEl = document.getElementById("baseColor");
+  const baseHexEl = document.getElementById("baseHex");
+  const baseHslEl = document.getElementById("baseHsl");
+
+  let hue = 0;
+  let saturation = 100;
+  let lightness = 50;
+
+  const subModes = {
+    mono: [],
+    same: [],
+    two: [
+      { value: "near", label: "邻近色 30°", offsets: [0, 30] },
+      { value: "medium", label: "中差色 90°", offsets: [0, 90] },
+      { value: "contrast", label: "对比色 120°", offsets: [0, 120] },
+      { value: "complement", label: "互补色 180°", offsets: [0, 180] }
+    ],
+    three: [
+      { value: "threeNear", label: "三邻色", offsets: [-30, 0, 30] },
+      { value: "longTriangle", label: "长三角配色", offsets: [0, 150, 210] },
+      { value: "regularTriangle", label: "正三角配色", offsets: [0, 120, 240] }
+    ],
+    four: [
+      { value: "rectangle", label: "长矩形配色", offsets: [0, 60, 180, 240] },
+      { value: "square", label: "正矩形配色", offsets: [0, 90, 180, 270] }
+    ]
+  };
+
+  function normalizeHue(h) {
+    return ((h % 360) + 360) % 360;
+  }
+
+  function hslToRgb(h, s, l) {
+    h = normalizeHue(h);
+    s /= 100;
+    l /= 100;
+
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    const m = l - c / 2;
+
+    let r = 0, g = 0, b = 0;
+
+    if (h >= 0 && h < 60) {
+      r = c; g = x; b = 0;
+    } else if (h >= 60 && h < 120) {
+      r = x; g = c; b = 0;
+    } else if (h >= 120 && h < 180) {
+      r = 0; g = c; b = x;
+    } else if (h >= 180 && h < 240) {
+      r = 0; g = x; b = c;
+    } else if (h >= 240 && h < 300) {
+      r = x; g = 0; b = c;
+    } else {
+      r = c; g = 0; b = x;
+    }
+
+    return {
+      r: Math.round((r + m) * 255),
+      g: Math.round((g + m) * 255),
+      b: Math.round((b + m) * 255)
+    };
+  }
+
+  function rgbToHex(r, g, b) {
+    return "#" + [r, g, b].map(v => {
+      const hex = v.toString(16).padStart(2, "0");
+      return hex;
+    }).join("").toUpperCase();
+  }
+
+  function hslToHex(h, s, l) {
+    const rgb = hslToRgb(h, s, l);
+    return rgbToHex(rgb.r, rgb.g, rgb.b);
+  }
+
+  function updateSubMode() {
+    const mode = modeSelect.value;
+    subModeSelect.innerHTML = "";
+
+    if (!subModes[mode] || subModes[mode].length === 0) {
+      subModeWrap.style.display = "none";
+      return;
+    }
+
+    subModeWrap.style.display = "block";
+
+    subModes[mode].forEach(item => {
+      const option = document.createElement("option");
+      option.value = item.value;
+      option.textContent = item.label;
+      subModeSelect.appendChild(option);
+    });
+  }
+
+  function getPaletteColors() {
+    const mode = modeSelect.value;
+
+    if (mode === "mono") {
+      return [
+        {
+          name: "选定色",
+          h: hue,
+          s: saturation,
+          l: lightness
+        },
+        {
+          name: "浅色",
+          h: hue,
+          s: saturation,
+          l: Math.min(90, lightness + 25)
+        },
+        {
+          name: "中浅色",
+          h: hue,
+          s: saturation,
+          l: Math.min(85, lightness + 12)
+        },
+        {
+          name: "深色",
+          h: hue,
+          s: saturation,
+          l: Math.max(15, lightness - 22)
+        }
+      ];
+    }
+
+    if (mode === "same") {
+      return [
+        {
+          name: "下 15°",
+          h: normalizeHue(hue - 15),
+          s: saturation,
+          l: lightness
+        },
+        {
+          name: "选定色",
+          h: hue,
+          s: saturation,
+          l: lightness
+        },
+        {
+          name: "上 15°",
+          h: normalizeHue(hue + 15),
+          s: saturation,
+          l: lightness
+        }
+      ];
+    }
+
+    const currentList = subModes[mode];
+    const current = currentList.find(item => item.value === subModeSelect.value) || currentList[0];
+
+    return current.offsets.map((offset, index) => {
+      return {
+        name: index === 0 ? "选定色" : current.label,
+        h: normalizeHue(hue + offset),
+        s: saturation,
+        l: lightness
+      };
+    });
+  }
+
+  function render() {
+    lightnessText.textContent = lightness;
+
+    const baseHex = hslToHex(hue, saturation, lightness);
+    baseColorEl.style.background = baseHex;
+    baseHexEl.textContent = baseHex;
+    baseHslEl.textContent = `HSL(${Math.round(hue)}, ${Math.round(saturation)}%, ${Math.round(lightness)}%)`;
+
+    const colors = getPaletteColors();
+
+    palette.innerHTML = "";
+
+    colors.forEach((color, index) => {
+      const hex = hslToHex(color.h, color.s, color.l);
+      const card = document.createElement("div");
+      card.className = "swatch";
+
+      card.innerHTML = `
+        <div class="swatch-color" style="background:${hex}"></div>
+        <div class="swatch-info">
+          <strong>${color.name} ${index + 1}</strong>
+          <div>HEX：${hex}</div>
+          <div>HSL：${Math.round(color.h)}, ${Math.round(color.s)}%, ${Math.round(color.l)}%</div>
+          <button class="copy-btn" data-hex="${hex}">复制 HEX</button>
+        </div>
+      `;
+
+      palette.appendChild(card);
+    });
+
+    document.querySelectorAll(".copy-btn").forEach(btn => {
+      btn.onclick = () => {
+        navigator.clipboard.writeText(btn.dataset.hex);
+        btn.textContent = "已复制";
+        setTimeout(() => {
+          btn.textContent = "复制 HEX";
+        }, 1000);
+      };
+    });
+  }
+
+  function setPickerByHS() {
+    const rect = colorWheel.getBoundingClientRect();
+    const radius = rect.width / 2;
+    const angle = hue * Math.PI / 180;
+    const r = radius * saturation / 100;
+
+    const x = radius + Math.cos(angle) * r;
+    const y = radius + Math.sin(angle) * r;
+
+    pickerPoint.style.left = x + "px";
+    pickerPoint.style.top = y + "px";
+  }
+
+  function pickColor(e) {
+    const rect = colorWheel.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+
+    const radius = rect.width / 2;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance > radius) return;
+
+    let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    if (angle < 0) angle += 360;
+
+    hue = angle;
+    saturation = Math.min(100, distance / radius * 100);
+
+    pickerPoint.style.left = e.clientX - rect.left + "px";
+    pickerPoint.style.top = e.clientY - rect.top + "px";
+
+    render();
+  }
+
+  colorWheel.addEventListener("click", pickColor);
+
+  let dragging = false;
+
+  colorWheel.addEventListener("mousedown", e => {
+    dragging = true;
+    pickColor(e);
+  });
+
+  window.addEventListener("mousemove", e => {
+    if (dragging) pickColor(e);
+  });
+
+  window.addEventListener("mouseup", () => {
+    dragging = false;
+  });
+
+  lightnessInput.addEventListener("input", e => {
+    lightness = Number(e.target.value);
+    render();
+  });
+
+  modeSelect.addEventListener("change", () => {
+    updateSubMode();
+    render();
+  });
+
+  subModeSelect.addEventListener("change", render);
+
+  updateSubMode();
+  setPickerByHS();
+  render();
+</script>
+
+</body>
+</html>

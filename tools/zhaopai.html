@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>港风门头招牌 · 单行排版</title>
+
+  <style>
+    :root {
+      --bg: #121212;
+      --panel-bg: #1d1d1d;
+      --panel-line: #393939;
+      --input-bg: #101010;
+      --text: #f5f1e8;
+      --muted: #969696;
+      --red: #d91d14;
+      --green: #19743a;
+      --gold: #dfb85c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      background:
+        radial-gradient(circle at 85% 5%, #353535 0%, transparent 28%),
+        radial-gradient(circle at 15% 100%, #242424 0%, transparent 36%),
+        var(--bg);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    /* 左侧控制面板 */
+    .panel {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 24px 22px 35px;
+      background: rgba(27, 27, 27, 0.98);
+      border-right: 1px solid var(--panel-line);
+    }
+
+    .panel::-webkit-scrollbar {
+      width: 7px;
+    }
+
+    .panel::-webkit-scrollbar-thumb {
+      border-radius: 10px;
+      background: #555;
+    }
+
+    h1 {
+      margin: 0 0 7px;
+      font-size: 23px;
+      letter-spacing: 1px;
+    }
+
+    .subtitle {
+      margin: 0 0 25px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .group {
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--panel-line);
+    }
+
+    .group-title {
+      margin-bottom: 14px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      color: #d0d0d0;
+      font-size: 12px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      height: 40px;
+      padding: 0 10px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: var(--input-bg);
+    }
+
+    input:focus,
+    select:focus {
+      border-color: #d83124;
+      box-shadow: 0 0 0 2px rgba(216, 49, 36, 0.18);
+    }
+
+    input[type="color"] {
+      padding: 4px;
+      cursor: pointer;
+    }
+
+    input[type="range"] {
+      height: auto;
+      padding: 0;
+      accent-color: #d83124;
+      cursor: pointer;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .range-row {
+      display: grid;
+      grid-template-columns: 1fr 55px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .range-value {
+      color: #efcc7d;
+      font-size: 13px;
+      text-align: right;
+    }
+
+    .line-control {
+      margin-bottom: 14px;
+      padding: 12px;
+      border: 1px solid #373737;
+      border-radius: 8px;
+      background: #171717;
+    }
+
+    .line-control:last-child {
+      margin-bottom: 0;
+    }
+
+    .line-control label:first-child {
+      margin-top: 0;
+    }
+
+    .custom-ratio {
+      display: none;
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #171717;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      min-height: 42px;
+      padding: 10px;
+      border: 0;
+      border-radius: 7px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      background: #505050;
+      transition: transform 0.18s ease, filter 0.18s ease;
+    }
+
+    button:hover {
+      filter: brightness(1.13);
+      transform: translateY(-1px);
+    }
+
+    .primary {
+      background: linear-gradient(135deg, #dd3726, #9e110a);
+    }
+
+    .tip {
+      margin: 16px 0 0;
+      color: #888;
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    /* 右侧预览区域 */
+    .workspace {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      padding: 34px;
+    }
+
+    .preview-shell {
+      width: min(1320px, 100%);
+      padding: 16px;
+      overflow: auto;
+      border: 1px solid #373737;
+      border-radius: 14px;
+      background-color: #252525;
+      background-image:
+        linear-gradient(45deg, #202020 25%, transparent 25%),
+        linear-gradient(-45deg, #202020 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #202020 75%),
+        linear-gradient(-45deg, transparent 75%, #202020 75%);
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      background-size: 20px 20px;
+      box-shadow: 0 24px 90px rgba(0, 0, 0, 0.42);
+    }
+
+    #signSvg {
+      display: block;
+      width: 100%;
+      min-width: 640px;
+      height: auto;
+    }
+
+    @media (max-width: 920px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--panel-line);
+      }
+
+      .workspace {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- 左侧控制面板 -->
+    <aside class="panel">
+      <h1>港风门头招牌</h1>
+
+      <p class="subtitle">
+        输入店名，生成港风瓷砖门头 SVG。<br>
+        支持横排 / 竖排、自定义画布比例与文字大小。
+      </p>
+
+      <section class="group">
+        <div class="group-title">文字内容与方向</div>
+
+        <div class="line-control" id="lineControl1">
+          <label for="line1">招牌文字</label>
+          <input id="line1" type="text" value="聯安老字號涼茶店" maxlength="30" />
+
+          <label for="line1Direction">排版方向</label>
+          <select id="line1Direction">
+            <option value="horizontal">横排</option>
+            <option value="vertical">竖排</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="group">
+        <div class="group-title">图底比例</div>
+
+        <label for="canvasRatio">画布比例</label>
+        <select id="canvasRatio">
+          <option value="1400:780">默认横幅（1400 : 780）</option>
+          <option value="16:9">16 : 9 宽屏</option>
+          <option value="3:2">3 : 2 横幅</option>
+          <option value="4:3">4 : 3 标准</option>
+          <option value="1:1">1 : 1 方形</option>
+          <option value="9:16">9 : 16 竖版</option>
+          <option value="custom">自定义宽高</option>
+        </select>
+
+        <div class="custom-ratio" id="customRatioFields">
+          <div class="two-col">
+            <div>
+              <label for="ratioWidth">宽度</label>
+              <input id="ratioWidth" type="number" min="400" max="6000" value="1400" />
+            </div>
+
+            <div>
+              <label for="ratioHeight">高度</label>
+              <input id="ratioHeight" type="number" min="300" max="6000" value="780" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="group">
+        <div class="group-title">版式设置</div>
+
+        <label for="fontFamily">字体风格</label>
+        <select id="fontFamily">
+          <option value="STKaiti, KaiTi, 'DFKai-SB', serif">楷体 / 毛笔招牌风格</option>
+          <option value="'Noto Serif SC', 'Songti SC', SimSun, serif">宋体招牌风格</option>
+          <option value="STFangsong, FangSong, serif">仿宋招牌风格</option>
+          <option value="'Microsoft YaHei', 'PingFang SC', sans-serif">现代黑体风格</option>
+        </select>
+
+        <label for="fontScale">文字大小</label>
+        <div class="range-row">
+          <input id="fontScale" type="range" min="50" max="200" value="100" />
+          <span class="range-value" id="fontScaleValue">100%</span>
+        </div>
+
+        <label for="tileSize">瓷砖尺寸</label>
+        <div class="range-row">
+          <input id="tileSize" type="range" min="25" max="75" value="44" />
+          <span class="range-value" id="tileSizeValue">44</span>
+        </div>
+
+        <label for="letterSpacing">文字间距</label>
+        <div class="range-row">
+          <input id="letterSpacing" type="range" min="-8" max="30" value="8" />
+          <span class="range-value" id="letterSpacingValue">8</span>
+        </div>
+
+        <label for="borderWidth">绿色边框宽度</label>
+        <div class="range-row">
+          <input id="borderWidth" type="range" min="10" max="50" value="26" />
+          <span class="range-value" id="borderWidthValue">26</span>
+        </div>
+      </section>
+
+      <section class="group">
+        <div class="group-title">颜色设置</div>
+
+        <div class="two-col">
+          <div>
+            <label for="textColor">文字颜色</label>
+            <input id="textColor" type="color" value="#d91d14" />
+          </div>
+
+          <div>
+            <label for="borderColor">边框颜色</label>
+            <input id="borderColor" type="color" value="#19743a" />
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div>
+            <label for="tileColor">瓷砖底色</label>
+            <input id="tileColor" type="color" value="#f5f0df" />
+          </div>
+
+          <div>
+            <label for="groutColor">瓷砖缝颜色</label>
+            <input id="groutColor" type="color" value="#c9c1af" />
+          </div>
+        </div>
+      </section>
+
+      <div class="button-row">
+        <button id="resetBtn">恢复默认</button>
+        <button id="downloadBtn" class="primary">下载 SVG</button>
+      </div>
+
+      <p class="tip">
+        SVG 下载后可以在 Illustrator、Figma、Inkscape 中继续编辑。<br>
+        实际制作前建议把文字转换为轮廓，避免字体缺失。
+      </p>
+    </aside>
+
+    <!-- 右侧预览区域 -->
+    <main class="workspace">
+      <div class="preview-shell">
+        <svg
+          id="signSvg"
+          viewBox="0 0 1400 780"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-label="港风门头招牌预览"
+        >
+          <defs>
+            <pattern
+              id="tilePattern"
+              width="44"
+              height="44"
+              patternUnits="userSpaceOnUse"
+            >
+              <rect width="44" height="44" fill="#f5f0df" />
+
+              <rect
+                x="0.8"
+                y="0.8"
+                width="42.4"
+                height="42.4"
+                fill="none"
+                stroke="#c9c1af"
+                stroke-width="1.4"
+              />
+
+              <path
+                id="tileHighlight"
+                d="M2 3 H42 M3 42 V2"
+                fill="none"
+                stroke="#fffdf4"
+                stroke-width="1.2"
+                stroke-opacity="0.78"
+              />
+
+              <path
+                id="tileShade"
+                d="M3 43 H43 M43 3 V43"
+                fill="none"
+                stroke="#a39b87"
+                stroke-width="1"
+                stroke-opacity="0.28"
+              />
+            </pattern>
+
+            <filter id="agedTexture">
+              <feTurbulence
+                type="fractalNoise"
+                baseFrequency="0.72"
+                numOctaves="2"
+                seed="18"
+                result="noise"
+              />
+
+              <feColorMatrix
+                in="noise"
+                type="saturate"
+                values="0"
+                result="grayNoise"
+              />
+
+              <feComponentTransfer in="grayNoise">
+                <feFuncA type="table" tableValues="0 0.08" />
+              </feComponentTransfer>
+            </filter>
+          </defs>
+
+          <!-- 招牌板背后阴影 -->
+          <rect
+            id="boardShadow"
+            x="55"
+            y="55"
+            width="1290"
+            height="670"
+            rx="4"
+            fill="#000000"
+            opacity="0.4"
+            transform="translate(12 15)"
+          />
+
+          <!-- 主招牌板 -->
+          <rect
+            id="signBoard"
+            x="55"
+            y="55"
+            width="1290"
+            height="670"
+            rx="3"
+            fill="url(#tilePattern)"
+            stroke="#19743a"
+            stroke-width="26"
+          />
+
+          <!-- 顶部绿色压边 -->
+          <rect
+            id="topGreenBar"
+            x="68"
+            y="68"
+            width="1264"
+            height="24"
+            fill="#125b2d"
+          />
+
+          <rect
+            id="topGreenHighlight"
+            x="68"
+            y="92"
+            width="1264"
+            height="5"
+            fill="#65a76f"
+            opacity="0.8"
+          />
+
+          <!-- 无分隔线（单行） -->
+
+          <!-- 文字层 -->
+          <g id="textLayer">
+            <text id="svgLine1"></text>
+          </g>
+
+          <!-- 旧化效果 -->
+          <rect
+            id="agedLayer"
+            x="68"
+            y="68"
+            width="1264"
+            height="644"
+            fill="#775d32"
+            opacity="0.12"
+            filter="url(#agedTexture)"
+            pointer-events="none"
+          />
+
+          <!-- 四角固定钉 -->
+          <g id="screws" fill="#5f5b4c" stroke="#efe5ca" stroke-width="2">
+            <circle id="screw1" cx="88" cy="88" r="6" />
+            <circle id="screw2" cx="1312" cy="88" r="6" />
+            <circle id="screw3" cx="88" cy="692" r="6" />
+            <circle id="screw4" cx="1312" cy="692" r="6" />
+          </g>
+        </svg>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const defaults = {
+      line1: "聯安老字號涼茶店",
+      line1Direction: "horizontal",
+
+      canvasRatio: "1400:780",
+      ratioWidth: "1400",
+      ratioHeight: "780",
+
+      fontFamily: "STKaiti, KaiTi, 'DFKai-SB', serif",
+      fontScale: "100",
+
+      tileSize: "44",
+      letterSpacing: "8",
+      borderWidth: "26",
+
+      textColor: "#d91d14",
+      borderColor: "#19743a",
+      tileColor: "#f5f0df",
+      groutColor: "#c9c1af"
+    };
+
+    const controlIds = Object.keys(defaults);
+
+    function getValue(id) {
+      return document.getElementById(id).value;
+    }
+
+    function hexShade(hex, amount) {
+      const color = hex.replace("#", "");
+      const number = parseInt(color, 16);
+
+      const red = Math.max(0, Math.min(255, (number >> 16) + amount));
+      const green = Math.max(0, Math.min(255, ((number >> 8) & 255) + amount));
+      const blue = Math.max(0, Math.min(255, (number & 255) + amount));
+
+      return (
+        "#" +
+        [red, green, blue]
+          .map(value => value.toString(16).padStart(2, "0"))
+          .join("")
+      );
+    }
+
+    function updateRangeLabels() {
+      document.getElementById("fontScaleValue").textContent =
+        `${getValue("fontScale")}%`;
+
+      document.getElementById("tileSizeValue").textContent =
+        getValue("tileSize");
+
+      document.getElementById("letterSpacingValue").textContent =
+        getValue("letterSpacing");
+
+      document.getElementById("borderWidthValue").textContent =
+        getValue("borderWidth");
+    }
+
+    function updateCustomRatioVisibility() {
+      const customRatioFields = document.getElementById("customRatioFields");
+      const isCustom = getValue("canvasRatio") === "custom";
+
+      customRatioFields.style.display = isCustom ? "block" : "none";
+    }
+
+    function getCanvasSize() {
+      const selectedRatio = getValue("canvasRatio");
+
+      if (selectedRatio === "custom") {
+        return {
+          width: Math.max(400, Number(getValue("ratioWidth")) || 1400),
+          height: Math.max(300, Number(getValue("ratioHeight")) || 780)
+        };
+      }
+
+      const [ratioWidth, ratioHeight] = selectedRatio.split(":").map(Number);
+      const width = 1400;
+      const height = Math.round((width * ratioHeight) / ratioWidth);
+
+      return { width, height };
+    }
+
+    function updateTilePattern() {
+      const size = Number(getValue("tileSize"));
+      const tileColor = getValue("tileColor");
+      const groutColor = getValue("groutColor");
+
+      const pattern = document.getElementById("tilePattern");
+      const rects = pattern.querySelectorAll("rect");
+
+      pattern.setAttribute("width", size);
+      pattern.setAttribute("height", size);
+
+      rects[0].setAttribute("width", size);
+      rects[0].setAttribute("height", size);
+      rects[0].setAttribute("fill", tileColor);
+
+      rects[1].setAttribute("width", size - 1.6);
+      rects[1].setAttribute("height", size - 1.6);
+      rects[1].setAttribute("stroke", groutColor);
+
+      document
+        .getElementById("tileHighlight")
+        .setAttribute("d", `M2 3 H${size - 2} M3 ${size - 2} V2`);
+
+      document
+        .getElementById("tileShade")
+        .setAttribute(
+          "d",
+          `M3 ${size - 1} H${size - 1} M${size - 1} 3 V${size - 1}`
+        );
+    }
+
+    function updateBoardLayout(width, height) {
+      const svg = document.getElementById("signSvg");
+
+      const outerMargin = Math.max(35, width * 0.04);
+      const innerMargin = outerMargin + 14;
+      const boardWidth = width - outerMargin * 2;
+      const boardHeight = height - outerMargin * 2;
+
+      const topBarHeight = Math.max(18, height * 0.03);
+
+      const contentTop = innerMargin + topBarHeight + 18;
+      const contentBottom = height - innerMargin;
+      const contentHeight = contentBottom - contentTop;
+
+      const boardShadow = document.getElementById("boardShadow");
+      const signBoard = document.getElementById("signBoard");
+      const topGreenBar = document.getElementById("topGreenBar");
+      const topGreenHighlight = document.getElementById("topGreenHighlight");
+      const agedLayer = document.getElementById("agedLayer");
+
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      svg.style.aspectRatio = `${width} / ${height}`;
+
+      boardShadow.setAttribute("x", outerMargin);
+      boardShadow.setAttribute("y", outerMargin);
+      boardShadow.setAttribute("width", boardWidth);
+      boardShadow.setAttribute("height", boardHeight);
+
+      signBoard.setAttribute("x", outerMargin);
+      signBoard.setAttribute("y", outerMargin);
+      signBoard.setAttribute("width", boardWidth);
+      signBoard.setAttribute("height", boardHeight);
+
+      topGreenBar.setAttribute("x", innerMargin);
+      topGreenBar.setAttribute("y", innerMargin);
+      topGreenBar.setAttribute("width", width - innerMargin * 2);
+      topGreenBar.setAttribute("height", topBarHeight);
+
+      topGreenHighlight.setAttribute("x", innerMargin);
+      topGreenHighlight.setAttribute("y", innerMargin + topBarHeight);
+      topGreenHighlight.setAttribute("width", width - innerMargin * 2);
+
+      agedLayer.setAttribute("x", innerMargin);
+      agedLayer.setAttribute("y", innerMargin);
+      agedLayer.setAttribute("width", width - innerMargin * 2);
+      agedLayer.setAttribute("height", height - innerMargin * 2);
+
+      const screwOffset = 20;
+
+      document.getElementById("screw1").setAttribute("cx", innerMargin + screwOffset);
+      document.getElementById("screw1").setAttribute("cy", innerMargin + screwOffset);
+
+      document.getElementById("screw2").setAttribute("cx", width - innerMargin - screwOffset);
+      document.getElementById("screw2").setAttribute("cy", innerMargin + screwOffset);
+
+      document.getElementById("screw3").setAttribute("cx", innerMargin + screwOffset);
+      document.getElementById("screw3").setAttribute("cy", height - innerMargin - screwOffset);
+
+      document.getElementById("screw4").setAttribute("cx", width - innerMargin - screwOffset);
+      document.getElementById("screw4").setAttribute("cy", height - innerMargin - screwOffset);
+
+      // 单行区域：整块内容区
+      const zone = { top: contentTop, bottom: contentBottom };
+
+      return zone;
+    }
+
+    function setLineText(options) {
+      const {
+        elementId,
+        text,
+        direction,
+        zone,
+        canvasWidth,
+        maxFontSize
+      } = options;
+
+      const element = document.getElementById(elementId);
+      const cleanText = text.trim() || "　";
+      const charCount = Math.max([...cleanText].length, 1);
+
+      const fontFamily = getValue("fontFamily");
+      const letterSpacing = Number(getValue("letterSpacing"));
+      const textColor = getValue("textColor");
+
+      const fontScale = Number(getValue("fontScale")) / 100;
+
+      const zoneHeight = zone.bottom - zone.top;
+      const safeZoneWidth = canvasWidth - 180;
+
+      element.textContent = cleanText;
+
+      element.setAttribute("font-family", fontFamily);
+      element.setAttribute("font-weight", "900");
+      element.setAttribute("fill", textColor);
+      element.setAttribute("stroke", hexShade(textColor, -52));
+      element.setAttribute("stroke-width", "2.2");
+      element.setAttribute("paint-order", "stroke fill");
+      element.setAttribute("stroke-linejoin", "round");
+      element.setAttribute("letter-spacing", letterSpacing);
+
+      if (direction === "vertical") {
+        const availableHeight = Math.max(80, zoneHeight - 22);
+
+        let baseFontSize =
+          (availableHeight - Math.max(0, charCount - 1) * letterSpacing) /
+          (charCount * 1.08);
+
+        baseFontSize = Math.min(baseFontSize, maxFontSize);
+        baseFontSize = Math.max(baseFontSize, 24);
+
+        const fontSize = baseFontSize * fontScale;
+
+        const totalTextHeight =
+          charCount * fontSize * 1.08 +
+          Math.max(0, charCount - 1) * letterSpacing;
+
+        const startY =
+          zone.top + (zoneHeight - totalTextHeight) / 2;
+
+        element.setAttribute("font-size", fontSize.toFixed(1));
+        element.setAttribute("x", (canvasWidth / 2).toFixed(1));
+        element.setAttribute("y", startY.toFixed(1));
+        element.setAttribute("text-anchor", "start");
+        element.setAttribute("dominant-baseline", "hanging");
+        element.setAttribute("writing-mode", "vertical-rl");
+        element.setAttribute("glyph-orientation-vertical", "0");
+      } else {
+        let baseFontSize =
+          (safeZoneWidth - Math.max(0, charCount - 1) * letterSpacing) /
+          (charCount * 1.05);
+
+        baseFontSize = Math.min(baseFontSize, maxFontSize);
+        baseFontSize = Math.max(baseFontSize, 28);
+
+        const fontSize = baseFontSize * fontScale;
+
+        element.setAttribute("font-size", fontSize.toFixed(1));
+        element.setAttribute("x", (canvasWidth / 2).toFixed(1));
+        element.setAttribute("y", ((zone.top + zone.bottom) / 2).toFixed(1));
+        element.setAttribute("text-anchor", "middle");
+        element.setAttribute("dominant-baseline", "middle");
+        element.removeAttribute("writing-mode");
+        element.removeAttribute("glyph-orientation-vertical");
+      }
+    }
+
+    function updateSign() {
+      updateRangeLabels();
+      updateCustomRatioVisibility();
+      updateTilePattern();
+
+      const { width, height } = getCanvasSize();
+
+      const borderColor = getValue("borderColor");
+      const borderWidth = Number(getValue("borderWidth"));
+
+      document.getElementById("signBoard").setAttribute("stroke", borderColor);
+      document.getElementById("signBoard").setAttribute("stroke-width", borderWidth);
+
+      document
+        .getElementById("topGreenBar")
+        .setAttribute("fill", hexShade(borderColor, -24));
+
+      // 单行区域
+      const zone = updateBoardLayout(width, height);
+
+      // 设置文字
+      setLineText({
+        elementId: "svgLine1",
+        text: getValue("line1"),
+        direction: getValue("line1Direction"),
+        zone: zone,
+        canvasWidth: width,
+        maxFontSize: Math.max(54, (height) * 0.62)
+      });
+    }
+
+    function downloadSvg() {
+      const originalSvg = document.getElementById("signSvg");
+      const svgCopy = originalSvg.cloneNode(true);
+
+      svgCopy.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      svgCopy.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+
+      const source =
+        '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        svgCopy.outerHTML;
+
+      const blob = new Blob([source], {
+        type: "image/svg+xml;charset=utf-8"
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "港风门头招牌.svg";
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      URL.revokeObjectURL(url);
+    }
+
+    function resetAll() {
+      Object.entries(defaults).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+
+        if (element) {
+          element.value = value;
+        }
+      });
+
+      updateSign();
+    }
+
+    controlIds.forEach(id => {
+      const element = document.getElementById(id);
+
+      if (!element) return;
+
+      element.addEventListener("input", updateSign);
+      element.addEventListener("change", updateSign);
+    });
+
+    document.getElementById("downloadBtn").addEventListener("click", downloadSvg);
+    document.getElementById("resetBtn").addEventListener("click", resetAll);
+
+    updateSign();
+  </script>
+</body>
+</html>
